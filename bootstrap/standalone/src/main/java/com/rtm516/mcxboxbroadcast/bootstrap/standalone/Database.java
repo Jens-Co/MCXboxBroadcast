@@ -32,30 +32,6 @@ public class Database {
         }
         return false;
     }
-    public String botName(String xuid) {
-        try (PreparedStatement statement = DatabaseSetup.getConnection().prepareStatement("SELECT * FROM " + DatabaseSetup.mcxb + " WHERE XUID=?")) {
-            statement.setString(1, xuid);
-            ResultSet results = statement.executeQuery();
-            if (results.next()) {
-                return results.getString(7);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-    public Date date(String xuid) {
-        try (PreparedStatement statement = DatabaseSetup.getConnection().prepareStatement("SELECT * FROM " + DatabaseSetup.mcxb + " WHERE XUID=?")) {
-            statement.setString(1, xuid);
-            ResultSet results = statement.executeQuery();
-            if (results.next()) {
-                return results.getDate(3);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
 
     public boolean premium(String xuid) {
         try (PreparedStatement statement = DatabaseSetup.getConnection().prepareStatement("SELECT * FROM " + DatabaseSetup.mcxb + " WHERE XUID=?")) {

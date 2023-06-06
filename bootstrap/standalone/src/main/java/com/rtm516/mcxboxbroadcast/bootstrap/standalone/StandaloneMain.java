@@ -4,9 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.nukkitx.protocol.bedrock.BedrockClient;
 import com.nukkitx.protocol.bedrock.BedrockPong;
-import com.rtm516.mcxboxbroadcast.bootstrap.standalone.json.Person;
-import com.rtm516.mcxboxbroadcast.bootstrap.standalone.json.Root;
-import org.json.JSONObject;
 import com.rtm516.mcxboxbroadcast.core.Logger;
 import com.rtm516.mcxboxbroadcast.core.SessionInfo;
 import com.rtm516.mcxboxbroadcast.core.SessionManager;
@@ -23,9 +20,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -35,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 public class StandaloneMain {
     private static StandaloneConfig config;
     private static Logger logger;
-    private static final HashMap<String, Date> lastSeenFriendsHashMap = new HashMap<>();
     private static HashSet<String> addedPersons = new HashSet<>();
     private static final Database db = new Database();
 
@@ -113,7 +106,6 @@ public class StandaloneMain {
         logger.info("Created session!");
 
         java.sql.Date currentDate = new java.sql.Date(System.currentTimeMillis());
-        Date minimalDate = new Date(System.currentTimeMillis() - 1000 * 60 * 60 * 24 * config.database.maxDate);
         String botName = config.sessionConfig.botName;
         Runnable friendSyncTask = new Runnable() {
             @Override
@@ -127,39 +119,6 @@ public class StandaloneMain {
                         if (addedPersons.contains(xuid)) {
                             continue; // Skip if the person is already added
                         }
-                        // If person is not in the database, add them as a friend and in the database
-                        if (!db.isXuidExists(xuid)) {
-                            db.addPerson(gamertag, xuid, currentDate, botName);
-                            sessionManager.addXboxFriend(xuid);
-                            addedPersons.add(xuid);
-                            logger.info("Added person: " + gamertag + " into database");
-                            continue;
-                        }
-                        // We block persons that are not connecting to their initial bot
-                        if (!db.botName(xuid).equals(botName)) {
-                            continue;
-                        }
-                        // Update gamertag.
-                        if (!db.getGamertagFromXuid(xuid).equals(gamertag)) {
-                            logger.info("Gamertag changed to " + gamertag);
-                            db.updateGamertag(xuid, gamertag);
-                        }
-                        Date personDate = db.date(xuid);
-                        boolean isPremium = db.premium(xuid);
-                        // If person is premium, allow them as a friend
-                        if (isPremium) {
-                            sessionManager.addXboxFriend(xuid);
-                            addedPersons.add(xuid);
-                            logger.info("Allow and add person: " + gamertag + " as a friend because they are a premium member!");
-                            continue;
-                        }
-                        // Person playtime has expired
-                        if (personDate != null && personDate.before(minimalDate)) {
-                            sessionManager.removeXboxFriend(xuid);
-                            addedPersons.remove(xuid);
-                            logger.info("Removed person: " + gamertag + " as their playtime has expired!");
-                            continue;
-                        }
                         // Unfollow the person and remove them as a friend
                         if (config.friendSyncConfig.autoUnfollow && !person.isFollowingCaller && person.isFollowedByCaller) {
                             db.updateDate(xuid, currentDate);
@@ -168,19 +127,25 @@ public class StandaloneMain {
                             logger.info("Removed " + gamertag + " (" + xuid + ") as a friend");
                             continue;
                         }
-                        // If person hasn't played in a long time, deny them access
-                        if (lastSeenFriendsHashMap.get(xuid) == null) {
-                            sessionManager.removeXboxFriend(xuid);
-                            addedPersons.remove(xuid);
-                            logger.info("Person: " + gamertag + " has been denied access as they do not have a last seen date.");
-                            continue;
+                        // If person is not in the database, add them as a friend and in the database
+                        if (!db.isXuidExists(xuid)) {
+                            db.addPerson(gamertag, xuid, currentDate, botName);
+                            sessionManager.addXboxFriend(xuid);
+                            logger.info("Added person: " + gamertag + " into database");
                         }
-                        // Person has played in 2 weeks, allow them and renew their playtime
-                        if (personDate != null && personDate.after(minimalDate)) {
-                            db.updateDate(xuid, currentDate);
+                        // Update gamertag.
+                        if (!db.getGamertagFromXuid(xuid).equals(gamertag)) {
+                            logger.info("Gamertag changed to " + gamertag);
+                            db.updateGamertag(xuid, gamertag);
+                        }
+                        boolean isPremium = db.premium(xuid);
+                        // If person is premium, allow them as a friend
+                        if (isPremium) {
                             sessionManager.addXboxFriend(xuid);
                             addedPersons.add(xuid);
-                            logger.info("Allow and add " + gamertag + " (" + xuid + ") as a friend as they have been seen recently!");
+                            logger.info("Allow and add person: " + gamertag + " as a friend because they are a premium member!");
+                        } else {
+                            logger.info(gamertag + " has tried to add the bot but doesn't have a premium account.");
                         }
                     }
                 } catch (XboxFriendsException | InterruptedException e) {
@@ -193,21 +158,6 @@ public class StandaloneMain {
         };
 
         scheduledThreadPool.schedule(friendSyncTask, 5, TimeUnit.SECONDS);
-
-        // XBL.IO api to retrieve persons last played with date time.
-        scheduledThreadPool.scheduleWithFixedDelay(() -> {
-            JSONObject response = new JSONObject(sessionManager.getFriendLastDate(config.sessionConfig.xblapi));
-            try {
-                ObjectMapper om = new ObjectMapper();
-                Root root = om.readValue(response.toString(), Root.class);
-                ArrayList<Person> allLastSeenFriends = root.getPeople();
-                for (Person lastSeenFriend : allLastSeenFriends) {
-                    lastSeenFriendsHashMap.put(lastSeenFriend.getXuid(), lastSeenFriend.getRecentPlayer().getTitles().get(0).getLastPlayedWithDateTime());
-                }
-            } catch (Exception e) {
-                logger.error(e.getMessage());
-            }
-        }, 0, 30, TimeUnit.MINUTES);
     }
 
     private static void updateSessionInfo(SessionInfo sessionInfo) {

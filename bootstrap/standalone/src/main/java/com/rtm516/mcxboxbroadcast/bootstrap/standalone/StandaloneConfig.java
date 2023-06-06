@@ -20,8 +20,6 @@ public class StandaloneConfig {
         public boolean queryServer;
         @JsonProperty("session-info")
         public SessionInfo sessionInfo;
-        @JsonProperty("xbl-api")
-        public String xblapi;
 
         @JsonProperty("botname")
         public String botName;
