@@ -418,4 +418,29 @@ public class SessionManager {
         rtaWebsocket = new RtaWebsocketClient(token, logger);
         rtaWebsocket.connect();
     }
+
+    /**
+     * get last played with date from friend
+     *
+     * @param key API key from xbl.io
+     * @return If the request was successful, this will be true even if the user is already your friend, false if something goes wrong
+     */
+    public String getFriendLastDate(String key) {
+        HttpRequest xboxFriendRequest = HttpRequest.newBuilder()
+                .uri(URI.create(String.valueOf(Constants.LAST_PLAYED_WITH)))
+                .header("x-xbl-contract-version", "2")
+                .header("accept-language", "en-GB")
+                .header("x-authorization", key)
+                .GET()
+                .build();
+
+        try {
+            HttpResponse<String> response = httpClient.send(xboxFriendRequest, HttpResponse.BodyHandlers.ofString());
+
+            return response.body().toString();
+        } catch (IOException | InterruptedException e) {
+            logger.debug("Add friend response: " + e.getMessage());
+            return null;
+        }
+    }
 }

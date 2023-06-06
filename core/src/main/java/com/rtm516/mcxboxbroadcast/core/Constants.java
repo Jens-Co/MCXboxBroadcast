@@ -19,6 +19,8 @@ public class Constants {
     public static final URI USER_AUTHENTICATE_REQUEST = URI.create("https://user.auth.xboxlive.com/user/authenticate");
     public static final URI DEVICE_AUTHENTICATE_REQUEST = URI.create("https://device.auth.xboxlive.com/device/authenticate");
     public static final URI TITLE_AUTHENTICATE_REQUEST = URI.create("https://title.auth.xboxlive.com/title/authenticate");
+    public static final URI LAST_PLAYED_WITH = URI.create("https://xbl.io/api/v2/recent-players");
+
     public static final URI XSTS_AUTHENTICATE_REQUEST = URI.create("https://xsts.auth.xboxlive.com/xsts/authorize");
     public static final URI RTA_WEBSOCKET = URI.create("wss://rta.xboxlive.com/connect");
     public static final URI CREATE_HANDLE = URI.create("https://sessiondirectory.xboxlive.com/handles");

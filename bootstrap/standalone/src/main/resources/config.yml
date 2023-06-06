@@ -6,6 +6,12 @@ session:
   # Should we query the bedrock server to sync the session information
   query-server: true
 
+  # api key for xbl.io
+  xbl-api: ""
+
+  # Botname for db queries.
+  botname: ""
+
   # The data to broadcast over xbox live, this is the default if querying is enabled
   session-info:
     host-name: "Geyser Test Server"
@@ -29,6 +35,14 @@ friend-sync:
 
   # Should we automatically unfollow people that no longer follow us
   auto-unfollow: true
+
+database:
+  enableDatabase: true
+  host: ""
+  port: 3306
+  username: ""
+  password: ""
+  max-date: 14
 
 # Enable debug logs
 debug-log: false
